@@ -176,3 +176,26 @@ class ExtendedKey:
                 chain_code = data[32:]
         return self.__class__(key, chain_code, self.network, self.depth+1,\
             self.fingerprint(), index)
+
+
+    def derivation_path(self, path: str):
+        # TODO: test
+        assert not self.is_public()
+        der = path.split('/')
+        assert der[0]=='m'
+        der = der[1:]
+
+        k = self
+
+        for x in der:
+            if x[-1]=="'":
+                hardened=True
+                i = int(x[:-1])
+            else:
+                hardened = False
+                i = int(x)
+
+            k = k.CDK(i, hardened = hardened)
+
+        return k
+
