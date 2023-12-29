@@ -1,0 +1,145 @@
+import pytest
+from io import BytesIO
+
+from .context import hackbitcoin
+from hackbitcoin.transaction import Tx, TxFetcher
+
+def hex_to_stream(hexstr):
+    return BytesIO(bytes.fromhex(hexstr))
+
+def test_Tx_legacy():
+    tx = Tx.parse(hex_to_stream('0100000001813f79011acb80925dfe69b3def355fe914bd1d96a3f5f71bf8303c6a989c7d1000000006b483045022100ed81ff192e75a3fd2304004dcadb746fa5e24c5031ccfcf21320b0277457c98f02207a986d955c6e0cb35d446a89d3f56100f4d7f67801c31967743a9c8e10615bed01210349fc4e631e3624a545de3f89f5d8684c7b8138bd94bdd531d2e213bf016b278afeffffff02a135ef01000000001976a914bc3b654dca7e56b04dca18f2566cdaf02e8d9ada88ac99c39800000000001976a9141c4bc762dd5423e332166702cb75f40df79fea1288ac19430600'))
+
+    assert tx.version==1
+    assert tx.txid()=='452c629d67e41baec3ac6f04fe744b4b9617f8f859c63b3002f8684e7a4fee03'
+    assert tx.hash().hex()=='452c629d67e41baec3ac6f04fe744b4b9617f8f859c63b3002f8684e7a4fee03'
+    assert tx.size()==226
+    assert tx.vsize()==226
+    assert tx.weight()==904
+    assert len(tx.tx_ins) == 1
+    assert tx.tx_ins[0].prev_tx.hex()=='d1c789a9c60383bf715f3f6ad9d14b91fe55f3deb369fe5d9280cb1a01793f81'
+    assert tx.tx_ins[0].prev_index==0
+    assert tx.tx_ins[0].script_sig().serialize().hex() == '6b483045022100ed81ff192e75a3fd2304004dcadb746fa5e24c5031ccfcf21320b0277457c98f02207a986d955c6e0cb35d446a89d3f56100f4d7f67801c31967743a9c8e10615bed01210349fc4e631e3624a545de3f89f5d8684c7b8138bd94bdd531d2e213bf016b278a'
+    assert tx.tx_ins[0].sequence == 4294967294
+    assert len(tx.tx_outs) == 2
+    assert tx.tx_outs[0].amount_sats == 32454049
+    assert tx.tx_outs[0].script_pubkey.serialize().hex() == '1976a914bc3b654dca7e56b04dca18f2566cdaf02e8d9ada88ac'
+    assert tx.tx_outs[1].amount_sats == 10011545
+    assert tx.tx_outs[1].script_pubkey.serialize().hex() == '1976a9141c4bc762dd5423e332166702cb75f40df79fea1288ac'
+    assert tx.locktime == 410393
+    assert tx.is_segwit()==False
+
+
+def test_Tx_segwit():
+    tx = Tx.parse(hex_to_stream('01000000000101cc0f35d7685cc65c5d022c358d70f1ae341a446916edef15f95c643733fe36490100000000ffffffff0220402c0000000000160014f10b82d924b8d73eb613e37e87e999a6200acc94034163070000000016001413f9d68f3b10874db6581f488e1bb3f1b9e0bf5402483045022100e4def56d2751fb26ef50fef08bee20b51dc5ee837226bbbd93d76ab0be888a5302201c94f268fce4aab1f66e0c75cc8f1d8a1e5e3ecb627eebccf83606b900536e89012103c0d041649b2a50d563e6c0921c455d6f57859ff8eaff346342a7d853a0a69fa800000000'))
+
+    assert tx.version==1
+    assert tx.txid() == 'f90e8069f24a0e4a427197a5d60733ece28176d366c058a87839e7d7ce6c7b97'
+    assert tx.hash().hex()=='2955a9d2dee2e0cf3e83e45d293f8fa745d723af3ae49a52a85a7a9551aedac7'
+    assert tx.size() == 223
+    assert tx.vsize() == 141
+    assert tx.weight() == 562
+
+    assert len(tx.tx_ins) == 1
+    assert tx.tx_ins[0].prev_tx.hex()=='4936fe3337645cf915efed1669441a34aef1708d352c025d5cc65c68d7350fcc'
+    assert tx.tx_ins[0].prev_index == 1
+    assert tx.tx_ins[0].sequence == 0xffffffff
+
+    assert len(tx.tx_outs) == 2
+
+    assert tx.tx_outs[0].amount_sats == 2900000
+    assert tx.tx_outs[0].script_pubkey.serialize().hex() == '160014f10b82d924b8d73eb613e37e87e999a6200acc94'
+
+    assert tx.tx_outs[1].amount_sats == 123945219
+    assert tx.tx_outs[1].script_pubkey.serialize().hex() == '16001413f9d68f3b10874db6581f488e1bb3f1b9e0bf54'
+
+    assert tx.locktime == 0
+    assert tx.is_segwit()==True
+
+    assert tx.witness.serialize().hex()=='02483045022100e4def56d2751fb26ef50fef08bee20b51dc5ee837226bbbd93d76ab0be888a5302201c94f268fce4aab1f66e0c75cc8f1d8a1e5e3ecb627eebccf83606b900536e89012103c0d041649b2a50d563e6c0921c455d6f57859ff8eaff346342a7d853a0a69fa8'
+
+
+    tx = Tx.parse(hex_to_stream('02000000000101e605aca0011be739b19c91c122df2eee64f9941310a39b254fbaba66a493c5f20200000000fffffffd0122020000000000002251207efdadd8f8849e012915c06337d7db55cbf0f1669b928450261b7a798fc3d714034012c880bc6be24d62c73f6150be530d3d0eabad1d2e53f321fd35a18beb94fbb0c3bd58cce718794f2894d4d18b73eb971b25ddeee8caef145b90d1fb1e71ca1c7c20daeae88c3f0dc062cbb058840d368daa5a418bdb9eacc00bfac2a17bd11d3521ac0063036f7264010118746578742f706c61696e3b636861727365743d7574662d3800367b2270223a22746170222c226f70223a22746f6b656e2d6d696e74222c227469636b223a226d696e6572222c22616d74223a2235227d6821c0daeae88c3f0dc062cbb058840d368daa5a418bdb9eacc00bfac2a17bd11d352100000000'))
+
+    assert tx.version==2
+    assert tx.txid() == '877a64abf0ceb1b250fbc9ceebeba1f686468f47d3ed484a225053b0e9cff2fc'
+    assert tx.hash().hex()=='ad7ddfb90ea4ebbaed6ca6f8ce1e5b9472ea2d8a4274f60f19628ef529061123'
+    assert tx.size() == 321
+    assert tx.vsize() == 151
+    assert tx.weight() == 603
+
+    assert len(tx.tx_ins) == 1
+    assert tx.tx_ins[0].prev_tx.hex()=='f2c593a466baba4f259ba3101394f964ee2edf22c1919cb139e71b01a0ac05e6'
+    assert tx.tx_ins[0].prev_index == 2
+    assert tx.tx_ins[0].sequence == 4261412863
+
+    assert len(tx.tx_outs) == 1
+
+    assert tx.tx_outs[0].amount_sats == 546
+    assert tx.tx_outs[0].script_pubkey.serialize().hex() == '2251207efdadd8f8849e012915c06337d7db55cbf0f1669b928450261b7a798fc3d714'
+
+    assert tx.locktime == 0
+    assert tx.is_segwit()==True
+
+    assert tx.witness.serialize().hex()=='034012c880bc6be24d62c73f6150be530d3d0eabad1d2e53f321fd35a18beb94fbb0c3bd58cce718794f2894d4d18b73eb971b25ddeee8caef145b90d1fb1e71ca1c7c20daeae88c3f0dc062cbb058840d368daa5a418bdb9eacc00bfac2a17bd11d3521ac0063036f7264010118746578742f706c61696e3b636861727365743d7574662d3800367b2270223a22746170222c226f70223a22746f6b656e2d6d696e74222c227469636b223a226d696e6572222c22616d74223a2235227d6821c0daeae88c3f0dc062cbb058840d368daa5a418bdb9eacc00bfac2a17bd11d3521'
+
+
+def test_Tx_coinbase():
+    tx = Tx.parse(hex_to_stream('010000000001010000000000000000000000000000000000000000000000000000000000000000ffffffff61036e7f0c1a2f5669614254432f4d696e65642062792066617a696c3736332f2cfabe6d6deba9f670d68161597211ec0490388ed9da4e5064e63fea45bad54e78cbcee7d210000000000000001068751805791007eda687960a79bf020000000000ffffffff0355f73327000000001976a914536ffa992491508dca0354e52f32a3a7a679a53a88ac00000000000000002b6a2952534b424c4f434b3a761b1c2e12fdc0d0225f03f86970ab067f67289470396b4bfccbf81f00595bfa0000000000000000266a24aa21a9ed864d1bdcade37670de49de47d599da5c31c8ca05482acf394784f1feb32795470120000000000000000000000000000000000000000000000000000000000000000000000000'))
+
+    assert tx.version==1
+    assert tx.txid() == '8b93862cfeb9ca81b2d2aae08837a367bf0763eee125ea013aee70c079d92d16'
+    assert tx.hash().hex() == '6712cb32621b4489d899a23a8715eb09d128bb8a51198ce971801756237b9323'
+
+    assert tx.size() == 317
+    assert tx.vsize() == 290
+    assert tx.weight() == 1160
+    assert tx.locktime == 0
+    assert tx.is_segwit() == True
+
+    assert len(tx.tx_ins) == 1
+    assert len(tx.tx_outs) == 3
+
+    assert tx.tx_ins[0].prev_tx.hex() == '0000000000000000000000000000000000000000000000000000000000000000'
+    assert tx.tx_ins[0].prev_index == 0xffffffff
+    assert tx.tx_ins[0].sequence == 4294967295
+    assert tx.tx_ins[0].script_sig().serialize().hex() == '61036e7f0c1a2f5669614254432f4d696e65642062792066617a696c3736332f2cfabe6d6deba9f670d68161597211ec0490388ed9da4e5064e63fea45bad54e78cbcee7d210000000000000001068751805791007eda687960a79bf020000000000'
+
+    assert tx.tx_outs[0].amount_sats == 657717077
+    assert tx.tx_outs[1].amount_sats == 0
+    assert tx.tx_outs[2].amount_sats == 0
+
+    assert tx.tx_outs[0].script_pubkey.serialize().hex() == '1976a914536ffa992491508dca0354e52f32a3a7a679a53a88ac'
+    assert tx.tx_outs[1].script_pubkey.serialize().hex() == '2b6a2952534b424c4f434b3a761b1c2e12fdc0d0225f03f86970ab067f67289470396b4bfccbf81f00595bfa'
+    assert tx.tx_outs[2].script_pubkey.serialize().hex() == '266a24aa21a9ed864d1bdcade37670de49de47d599da5c31c8ca05482acf394784f1feb3279547'
+
+    assert tx.witness.serialize().hex() == '01200000000000000000000000000000000000000000000000000000000000000000'
+
+    assert tx.is_coinbase()==True
+    assert tx.fee()==0
+
+
+def test_validate_tx():
+    tx_prev = Tx.parse(hex_to_stream('0100000002137c53f0fb48f83666fcfd2fe9f12d13e94ee109c5aeabbfa32bb9e02538f4cb000000006a47304402207e6009ad86367fc4b166bc80bf10cf1e78832a01e9bb491c6d126ee8aa436cb502200e29e6dd7708ed419cd5ba798981c960f0cc811b24e894bff072fea8074a7c4c012103bc9e7397f739c70f424aa7dcce9d2e521eb228b0ccba619cd6a0b9691da796a1ffffffff517472e77bc29ae59a914f55211f05024556812a2dd7d8df293265acd8330159010000006b483045022100f4bfdb0b3185c778cf28acbaf115376352f091ad9e27225e6f3f350b847579c702200d69177773cd2bb993a816a5ae08e77a6270cf46b33f8f79d45b0cd1244d9c4c0121031c0b0b95b522805ea9d0225b1946ecaeb1727c0b36c7e34165769fd8ed860bf5ffffffff027a958802000000001976a914a802fc56c704ce87c42d7c92eb75e7896bdc41ae88aca5515e00000000001976a914e82bd75c9c662c3f5700b33fec8a676b6e9391d588ac00000000'))
+    TxFetcher.add_to_cache(tx_prev)
+
+    tx = Tx.parse(hex_to_stream('0100000001813f79011acb80925dfe69b3def355fe914bd1d96a3f5f71bf8303c6a989c7d1000000006b483045022100ed81ff192e75a3fd2304004dcadb746fa5e24c5031ccfcf21320b0277457c98f02207a986d955c6e0cb35d446a89d3f56100f4d7f67801c31967743a9c8e10615bed01210349fc4e631e3624a545de3f89f5d8684c7b8138bd94bdd531d2e213bf016b278afeffffff02a135ef01000000001976a914bc3b654dca7e56b04dca18f2566cdaf02e8d9ada88ac99c39800000000001976a9141c4bc762dd5423e332166702cb75f40df79fea1288ac19430600'))
+
+    assert tx.version==1
+    assert tx.is_segwit()==False
+    assert tx.txid()=='452c629d67e41baec3ac6f04fe744b4b9617f8f859c63b3002f8684e7a4fee03'
+    assert tx.size()==226
+    assert tx.vsize()==226
+    assert tx.weight()==904
+    assert tx.fee() == 40000
+    assert tx.feerate() == 177
+
+    assert tx.sighash(0x01, 0).hex() == '27e0c5994dec7824e56dec6b2fcb342eb7cdb0d0957c2fce9882f715e85d81a6'
+
+    assert tx.is_valid()
+
+    tx_prev = Tx.parse(hex_to_stream('010000000126c07ece0bce7cda0ccd14d99e205f118cde27e83dd75da7b141fe487b5528fb000000008b48304502202b7e37831273d74c8b5b1956c23e79acd660635a8d1063d413c50b218eb6bc8a022100a10a3a7b5aaa0f07827207daf81f718f51eeac96695cf1ef9f2020f21a0de02f01410452684bce6797a0a50d028e9632be0c2a7e5031b710972c2a3285520fb29fcd4ecfb5fc2bf86a1e7578e4f8a305eeb341d1c6fc0173e5837e2d3c7b178aade078ffffffff02b06c191e010000001976a9143564a74f9ddb4372301c49154605573d7d1a88fe88ac00e1f505000000001976a914010966776006953d5567439e5e39f86a0d273bee88ac00000000'))
+    TxFetcher.add_to_cache(tx_prev)
+    tx = Tx.parse(hex_to_stream('0100000001eccf7e3034189b851985d871f91384b8ee357cd47c3024736e5676eb2debb3f2010000008c4930460221009e0339f72c793a89e664a8a932df073962a3f84eda0bd9e02084a6a9567f75aa022100bd9cbaca2e5ec195751efdfac164b76250b1e21302e51ca86dd7ebd7020cdc0601410450863ad64a87ae8a2fe83c1af1a8403cb53f53e486d8511dad8a04887e5b23522cd470243453a299fa9e77237716103abc11a1df38855ed6f2ee187e9c582ba6ffffffff01605af405000000001976a914097072524438d003d23a2f23edb65aae1bb3e46988ac00000000'))
+
+    assert tx.is_valid()
