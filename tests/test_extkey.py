@@ -6,20 +6,22 @@ import pytest
 from hackbitcoin.ecc import PubKey, PrivKey
 from hackbitcoin.extkey import ExtendedKey
 from hackbitcoin.address import Address
+from hackbitcoin.bip39 import Mnemonic
+from hackbitcoin.hash import hash160, sha256
 
 
 def check_serialization(x):
     s = str(x)
-    x2 = ExtendedKey.read(s)
+    x2 = ExtendedKey.import_format(s)
     assert x.key == x2.key
     assert x == x2
     assert str(x) == str(x2)
 
 def get_address(xpub):
-    return Address.p2pkh(xpub.key, network = xpub.network)
+    return Address.p2pkh(xpub.key, network = xpub.network())
 
 def get_wif(xpriv):
-    return xpriv.key.wif(network = xpriv.network)
+    return xpriv.key.wif(network = xpriv.network())
 
 
 def test_1():
@@ -240,10 +242,88 @@ def test_5():
 
     for k in invalid_keys:
         try:
-            m = ExtendedKey.read('xpub661MyMwAqRbcEYS8w7XLSVeEsBXy79zSzH1J8vCdxAZningWLdN3zgtU6LBpB85b3D2yc8sfvZU521AAwdZafEz7mnzBBsz4wKY5fTtTQBm')
+            m = ExtendedKey.import_format('xpub661MyMwAqRbcEYS8w7XLSVeEsBXy79zSzH1J8vCdxAZningWLdN3zgtU6LBpB85b3D2yc8sfvZU521AAwdZafEz7mnzBBsz4wKY5fTtTQBm')
             fail = False
         except Exception as e:
             fail = True
             print(k, 'failed:', e)
 
         assert fail
+
+
+def test_bip49():
+    masterseedwords = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'
+    masterkey = 'uprv8tXDerPXZ1QsVNjUJWTurs9kA1KGfKUAts74GCkcXtU8GwnH33GDRbNJpEqTvipfCyycARtQJhmdfWf8oKt41X9LL1zeD2pLsWmxEk3VAwd'
+
+    m = Mnemonic.master_key(masterseedwords, network = 'testnet', scheme = 'P2SH(P2WPKH)')
+    assert masterkey == m.export_format()
+
+    # Account 0, root = m/49'/1'/0'
+    m_49h_1h_0h = m.derivation_path("m/49'/1'/0'")
+
+    account0Xpriv = \
+    'uprv91G7gZkzehuMVxDJTYE6tLivdF8e4rvzSu1LFfKw3b2Qx1Aj8vpoFnHdfUZ3hmi9jsvPifmZ24RTN2KhwB8BfMLTVqaBReibyaFFcTP1s9n'
+    assert m_49h_1h_0h.export_format() == account0Xpriv
+
+    account0Xpub = \
+    'upub5EFU65HtV5TeiSHmZZm7FUffBGy8UKeqp7vw43jYbvZPpoVsgU93oac7Wk3u6moKegAEWtGNF8DehrnHtv21XXEMYRUocHqguyjknFHYfgY'
+    assert m_49h_1h_0h.neutered().export_format() == account0Xpub
+
+
+    # Account 0, first receiving private key = m/49'/1'/0'/0/0
+    my0key = m_49h_1h_0h.derivation_path("m/0/0")
+    my0pubkey = my0key.neutered().key
+
+    account0recvPrivateKey = \
+    'cULrpoZGXiuC19Uhvykx7NugygA3k86b3hmdCeyvHYQZSxojGyXJ'
+    assert my0key.key.export_format(network='testnet') == account0recvPrivateKey
+    account0recvPrivateKeyHex = \
+    'c9bdb49cfbaedca21c4b1f3a7803c34636b1d7dc55a717132443fc3f4c5867e8'
+    assert my0key.key.hex() == account0recvPrivateKeyHex
+    account0recvPublickKeyHex = \
+    '03a1af804ac108a8a51782198c2d034b28bf90c8803f5a53f76276fa69a4eae77f'
+    assert my0pubkey.hex() == account0recvPublickKeyHex
+
+    # Address derivation
+    keyhash = '38971f73930f6c141d977ac4fd4a727c854935b3' # HASH160(account0recvPublickKeyHex)
+    assert hash160(my0pubkey.serialize()).hex() == keyhash
+
+    scriptSig = '001438971f73930f6c141d977ac4fd4a727c854935b3' # = <0 <keyhash>>
+    addressBytes = '336caa13e08b96080a32b5d818d59b4ab3b36742' # = HASH160(scriptSig)
+
+    # addressBytes base58check encoded for testnet
+    address = '2Mww8dCYPUpKHofjgcXcBCEGmniw9CoaiD2' # = base58check(prefix | addressBytes)
+    assert Address.p2pkh(my0pubkey)
+
+def test_dice_rolls():
+    dice_roll = 10*'1' + 10*'2' + 10*'3' + 10*'4' + 10*'5'
+    entropy = sha256(dice_roll.encode())
+
+    mnemonic = Mnemonic.generate(entropy[:16])
+    assert mnemonic == 'limit palace swing matter antique come sea canvas cigar decide damage sea'
+
+    xpriv = Mnemonic.master_key(mnemonic)
+
+    xpriv_str = xpriv.export_format()
+    assert xpriv_str=='xprv9s21ZrQH143K466vGp3fvz8f57ZVX52WQuGMXG48XpcYAx3Yu12aYZg59nZRuuAskKNKj3dUxhdokYtDPVdgmLg76gQiFJV62r9y8Rp3vs5'
+
+    fingerprint = xpriv.fingerprint().hex()
+    assert fingerprint == '084f6082'
+
+    # BIP44
+    xpriv_derived = xpriv.derivation_path("m/44'/0'/0'")
+    xpriv_derived.set_version(scheme='P2PKH')
+    xpub_derived = xpriv_derived.neutered()
+
+    assert xpriv_derived.export_format() == 'xprv9zYK9C7JKgDKQ3GCPSFMbZgJpESBKi5UnAnDSeYWe5PUmGG1kgojANiK3RZDBR7JESm8HnFGqrRNYXBvqoyoUMvMtU5j3BAAZec7tRUiWrq'
+    assert xpub_derived.export_format() == 'xpub6DXfYheCA3mccXLfVTnMxhd3NGGfjAoL9PhpF2x8CQvTe4bAJE7yiB2ntgP4sZN33jgo4zradjW7Dq3n9K6Nb9d9jaBmAUcGWNqH6m6NmVs'
+
+    # BIP49
+    xpriv_derived = xpriv.derivation_path("m/49'/0'/0'")
+    xpriv_derived.set_version(scheme='P2SH(P2WPKH)')
+    xpub_derived = xpriv_derived.neutered()
+
+    assert xpriv_derived.export_format() == 'yprvAJZ7VQBfL4Z9sbD9xmn7JBYgeuvHVQaei4UtYDBqVrQqyaTCWNksJue4TrR9hvCteDfumaGG1rAEmEGeX9yXYZyByviN2ScLPaMNcBbfzb2'
+    assert xpub_derived.export_format() == 'ypub6XYTtuiZAS7T65Hd4oK7fKVRCwkmtsJW5HQVLbbT4BwprNnM3v57rhxYK8FrSTYEQ2i3SbG3JjH47W4W8HVyGvZ4BqKtwDRpvJ3ckVJ16jR'
+
+

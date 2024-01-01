@@ -37,17 +37,23 @@ def test_PrivKey_serialization():
     p = PrivKey(5003)
     wif = 'cMahea7zqjxrtgAbB7LSGbcQUr1uX1ojuat9jZodMN8rFTv2sfUK'
     assert wif == p.wif(network='testnet')
-    assert PrivKey.from_wif(wif) == p
+    key, net = PrivKey.from_wif(wif)
+    assert key == p
+    assert net == 'testnet'
 
     p = PrivKey(2021**5,compressed=False)
     wif = '91avARGdfge8E4tZfYLoxeJ5sGBdNJQH4kvjpWAxgzczjbCwxic'
     assert wif == p.wif(network='testnet')
-    assert PrivKey.from_wif(wif) == p
+    key, _ = PrivKey.from_wif(wif)
+    assert key == p
+    assert net == 'testnet'
 
     p = PrivKey(0x54321deadbeef)
     wif = 'KwDiBf89QgGbjEhKnhXJuH7LrciVrZi3qYjgiuQJv1h8Ytr2S53a'
     assert wif == p.wif(network='mainnet')
-    assert PrivKey.from_wif(wif) == p
+    key, net = PrivKey.from_wif(wif)
+    assert key == p
+    assert net == 'mainnet'
 
 
 def test_address():

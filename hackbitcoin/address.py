@@ -8,7 +8,7 @@ class Address:
     @staticmethod
     def p2pkh(pubkey,network='mainnet'):
         h160 = hash160(pubkey.serialize())
-        prefix = Network.p2pkh_prefix(network)
+        prefix = Network.address_prefix('P2PKH', network)
         return base58.encode_checksum(prefix+h160)
 
     @staticmethod
@@ -18,7 +18,7 @@ class Address:
                 Script.OP_DUP, Script.OP_HASH160, pk_hash,
                 Script.OP_EQUALVERIFY, Script.OP_CHECKSIG])
         h160 = hash160(script.serialize())
-        prefix = Network.p2sh_prefix(network)
+        prefix = Network.address_prefix('P2SH', network)
         return base58.encode_checksum(prefix+h160)
 
     @staticmethod

@@ -317,14 +317,15 @@ class Mnemonic:
         return entropy
 
     @staticmethod
-    def master_key(wordlist: str, passphrase: str='', backend = mybip39):
+    def master_key(wordlist: str, passphrase: str='', backend = mybip39, \
+        network: str='mainnet', scheme: str = 'P2PKH'):
         '''
         Given the mnemonic sentence and a passphrase, generate a BIP32 extended
         key.
         '''
         assert backend._validate(wordlist)
         seed = backend._seed_from_mnemonic(wordlist, passphrase)
-        return ExtendedKey.from_seed(seed)
+        return ExtendedKey.from_seed(seed, network=network, scheme = scheme)
 
 
     @staticmethod

@@ -91,22 +91,24 @@ class PrivKey:
     @classmethod
     def from_wif(cls,wif):
         # first byte flags the network: mainnet, testnet, etc
-        mybytes = base58.decode_checksum(wif)[1:]
+        mybytes = base58.decode_checksum(wif)
+        network = Network.wif_prefix_decode(mybytes[0:1])
+        mybytes = mybytes[1:]
         n = int.from_bytes(mybytes[:32],'big')
         if len(mybytes)>32:
             compressed = True
         else:
             compressed = False
-        return cls(n,compressed)
+        return cls(n,compressed), network
 
-    def write(self):
+    def export_format(self, network: str = 'mainnet'):
         '''
         Human readable.
         '''
-        return self.wif()
+        return self.wif(network = network)
 
     @classmethod
-    def read(cls, wif):
+    def import_format(cls, wif):
         return cls.from_wif(wif)
 
     def __repr__(self):

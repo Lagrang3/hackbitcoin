@@ -12,7 +12,7 @@ from .ecc import PubKey, PrivKey
 class ExtendedKey:
     def __init__(self, \
         key, chain_code: bytes, \
-        network: str = 'mainnet', \
+        version: bytes = Network.hdwallet_prefix('priv', 'P2PKH', 'mainnet'), \
         depth: int = 0,\
         parent: bytes = bytes.fromhex('00000000'),\
         index: int = 0):
@@ -24,24 +24,28 @@ class ExtendedKey:
 
         self.key = key
         self.chain_code = chain_code
-        self.network = network
+        self.version = version
         self.depth = depth
         self.parent = parent
         self.index = index
 
     def __eq__(self, other):
         return self.key == other.key and self.chain_code == other.chain_code \
-            and self.network == other.network and self.depth == other.depth \
+            and self.version == other.version and self.depth == other.depth \
             and self.parent == other.parent and self.index == other.index
 
     @classmethod
-    def from_seed(cls, seed: bytes):
+    def from_seed(cls, seed: bytes, network: str='mainnet', \
+        scheme: str = 'P2PKH'):
+        '''
+        '''
         my_data = seed
         my_key = 'Bitcoin seed'.encode()
         k = hmac_sha512(my_key, my_data)
         key = PrivKey(big_endian_to_int(k[:32]))
         chain_code = k[32:]
-        return cls(key, chain_code)
+        version = Network.hdwallet_prefix(network = network, scheme = scheme)
+        return cls(key, chain_code, version=version)
 
     def serialize(self):
         '''
@@ -52,16 +56,7 @@ class ExtendedKey:
             key_ser = bytes.fromhex('00') + key_ser
         assert len(key_ser)==33
 
-        if isinstance(self.key, PrivKey):
-            version = Network.hdwallet_priv_prefix(self.network)
-        elif isinstance(self.key, PubKey):
-            version = Network.hdwallet_pub_prefix(self.network)
-        else:
-            raise ValueError(\
-                'Key is neither a PrivKey nor a PubKey, type: {}'.format(\
-                    type(self.key)))
-
-        key78 = version \
+        key78 = self.version \
             + int_to_big_endian(self.depth, 1) \
             + self.parent \
             + int_to_big_endian(self.index, 4) \
@@ -71,6 +66,26 @@ class ExtendedKey:
 
     def hex(self):
         return self.serialize().hex()
+
+
+    def network(self):
+        key_type, scheme, network = Network.hdwallet_prefix_decode(self.version)
+        return network
+
+    def set_version(self, scheme = None, network = None):
+        '''
+        '''
+        key_type, old_scheme, old_network = Network.hdwallet_prefix_decode(self.version)
+        if scheme is None:
+            scheme = old_scheme
+        if network is None:
+            network = old_network
+
+        self.version = Network.hdwallet_prefix(\
+            key_type = key_type, \
+            scheme = scheme, \
+            network = network)
+
 
     @classmethod
     def parse(cls, stream):
@@ -86,22 +101,9 @@ class ExtendedKey:
 
         assert len(key_ser)==33
 
-        if version == Network.hdwallet_priv_prefix('testnet'):
-            network = 'testnet'
-            is_private = True
-        elif version == Network.hdwallet_priv_prefix('mainnet'):
-            network = 'mainnet'
-            is_private = True
-        elif version == Network.hdwallet_pub_prefix('mainnet'):
-            network = 'mainnet'
-            is_private = False
-        elif version == Network.hdwallet_pub_prefix('testnet'):
-            network = 'testnet'
-            is_private = False
-        else:
-            raise ValueError('Unknown hdwallet prefix')
+        key_type, scheme, network = Network.hdwallet_prefix_decode(version)
 
-        if is_private:
+        if key_type == 'priv':
             assert key_ser[0]==0
             key = PrivKey.parse(key_ser[1:])
         else:
@@ -111,29 +113,33 @@ class ExtendedKey:
             assert index==0
             assert parent == bytes.fromhex('00000000')
 
-        return cls(key, chain_code, network, depth, parent, index)
+        return cls(key, chain_code, version, depth, parent, index)
 
     def __repr__(self):
-        return self.write()
+        return self.export_format()
+
 
     @classmethod
-    def read(cls, string):
+    def import_format(cls, string):
         '''
-        Parse from human readable format
+        Import from human readable format
         '''
         data = base58.decode_checksum(string)
         return cls.parse(BytesIO(data))
 
-    def write(self):
+
+    def export_format(self):
         '''
-        Write to human readable format
+        Export to human readable format
         '''
         return base58.encode_checksum(self.serialize())
 
 
     def neutered(self):
         assert isinstance(self.key, PrivKey)
-        return self.__class__(self.key.PubKey(), self.chain_code, self.network, self.depth,\
+        priv, scheme, network = Network.hdwallet_prefix_decode(self.version)
+        new_version = Network.hdwallet_prefix('pubk', scheme, network)
+        return self.__class__(self.key.PubKey(), self.chain_code, new_version, self.depth,\
             self.parent, self.index)
 
     def fingerprint(self):
@@ -174,12 +180,11 @@ class ExtendedKey:
                     int_to_big_endian(index, 4))
                 key = PrivKey(big_endian_to_int(data[:32])) + self.key
                 chain_code = data[32:]
-        return self.__class__(key, chain_code, self.network, self.depth+1,\
+        return self.__class__(key, chain_code, self.version, self.depth+1,\
             self.fingerprint(), index)
 
 
     def derivation_path(self, path: str):
-        # TODO: test
         assert not self.is_public()
         der = path.split('/')
         assert der[0]=='m'

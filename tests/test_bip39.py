@@ -51,7 +51,7 @@ def test_2():
     for w,k in zip(L,K):
         assert Mnemonic.is_valid(w)
         key = Mnemonic.master_key(w)
-        assert key.write() == k
+        assert key.export_format() == k
 
 
 def test_3():
@@ -216,7 +216,7 @@ def test_3():
         assert seed.hex() == expected_seed
 
         key = Mnemonic.master_key(mnemonic, passphrase)
-        assert key.write() == expected_xprv
+        assert key.export_format() == expected_xprv
 
 def test_4():
     # these are all random incomplete (by a word) mnemonics
