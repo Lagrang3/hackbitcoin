@@ -15,6 +15,12 @@ class Network_class:
             ('priv', 'P2SH(P2WPKH)', 'mainnet', '049d7878'),
             ('pubk', 'P2SH(P2WPKH)', 'testnet', '044a5262'),
             ('priv', 'P2SH(P2WPKH)', 'testnet', '044a4e28'),
+
+            # BIP84
+            ('pubk', 'P2WPKH', 'mainnet', '04b24746'),
+            ('priv', 'P2WPKH', 'mainnet', '04b2430c'),
+            ('pubk', 'P2WPKH', 'testnet', '045f1cf6'),
+            ('priv', 'P2WPKH', 'testnet', '045f18bc'),
             ]
 
         for priv, scheme, net, hexc in codes:

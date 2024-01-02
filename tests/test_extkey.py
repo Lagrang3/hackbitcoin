@@ -295,6 +295,59 @@ def test_bip49():
     address = '2Mww8dCYPUpKHofjgcXcBCEGmniw9CoaiD2' # = base58check(prefix | addressBytes)
     assert Address.p2pkh(my0pubkey)
 
+def test_bip84():
+    mnemonic = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'
+    m = Mnemonic.master_key(mnemonic, scheme='P2WPKH')
+
+    rootpriv = 'zprvAWgYBBk7JR8Gjrh4UJQ2uJdG1r3WNRRfURiABBE3RvMXYSrRJL62XuezvGdPvG6GFBZduosCc1YP5wixPox7zhZLfiUm8aunE96BBa4Kei5'
+    rootpub  = 'zpub6jftahH18ngZxLmXaKw3GSZzZsszmt9WqedkyZdezFtWRFBZqsQH5hyUmb4pCEeZGmVfQuP5bedXTB8is6fTv19U1GQRyQUKQGUTzyHACMF'
+    assert m.export_format() == rootpriv
+    assert m.neutered().export_format() == rootpub
+
+    # Account 0, root = m/84'/0'/0'
+    ac0 = m.derivation_path("m/84'/0'/0'")
+    xpriv = 'zprvAdG4iTXWBoARxkkzNpNh8r6Qag3irQB8PzEMkAFeTRXxHpbF9z4QgEvBRmfvqWvGp42t42nvgGpNgYSJA9iefm1yYNZKEm7z6qUWCroSQnE'
+    xpub  = 'zpub6rFR7y4Q2AijBEqTUquhVz398htDFrtymD9xYYfG1m4wAcvPhXNfE3EfH1r1ADqtfSdVCToUG868RvUUkgDKf31mGDtKsAYz2oz2AGutZYs'
+    assert ac0.export_format()==xpriv
+    assert ac0.neutered().export_format()==xpub
+
+
+    # Account 0, first receiving address = m/84'/0'/0'/0/0
+    myprivkey = ac0.derivation_path("m/0/0").key
+    mypubkey = myprivkey.PubKey()
+
+    privkey = 'KyZpNDKnfs94vbrwhJneDi77V6jF64PWPF8x5cdJb8ifgg2DUc9d'
+    pubkey  = '0330d54fd0dd420a6e5f8d3624f5f3482cae350f79d5f0753bf5beef9c2d91af3c'
+    address = 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu'
+
+    assert myprivkey.export_format()==privkey
+    assert mypubkey.hex() == pubkey
+    assert Address.p2wpkh(mypubkey, network = ac0.network()) == address
+
+    # Account 0, second receiving address = m/84'/0'/0'/0/1
+    myprivkey = ac0.derivation_path("m/0/1").key
+    mypubkey = myprivkey.PubKey()
+
+    privkey = 'Kxpf5b8p3qX56DKEe5NqWbNUP9MnqoRFzZwHRtsFqhzuvUJsYZCy'
+    pubkey  = '03e775fd51f0dfb8cd865d9ff1cca2a158cf651fe997fdc9fee9c1d3b5e995ea77'
+    address = 'bc1qnjg0jd8228aq7egyzacy8cys3knf9xvrerkf9g'
+
+    assert myprivkey.export_format()==privkey
+    assert mypubkey.hex() == pubkey
+    assert Address.p2wpkh(mypubkey, network = ac0.network()) == address
+
+    # Account 0, first change address = m/84'/0'/0'/1/0
+    myprivkey = ac0.derivation_path("m/1/0").key
+    mypubkey = myprivkey.PubKey()
+
+    privkey = 'KxuoxufJL5csa1Wieb2kp29VNdn92Us8CoaUG3aGtPtcF3AzeXvF'
+    pubkey  = '03025324888e429ab8e3dbaf1f7802648b9cd01e9b418485c5fa4c1b9b5700e1a6'
+    address = 'bc1q8c6fshw2dlwun7ekn9qwf37cu2rn755upcp6el'
+
+    assert myprivkey.export_format()==privkey
+    assert mypubkey.hex() == pubkey
+    assert Address.p2wpkh(mypubkey, network = ac0.network()) == address
+
 def test_dice_rolls():
     dice_roll = 10*'1' + 10*'2' + 10*'3' + 10*'4' + 10*'5'
     entropy = sha256(dice_roll.encode())
@@ -310,7 +363,7 @@ def test_dice_rolls():
     fingerprint = xpriv.fingerprint().hex()
     assert fingerprint == '084f6082'
 
-    # BIP44
+    # BIP44, legacy
     xpriv_derived = xpriv.derivation_path("m/44'/0'/0'")
     xpriv_derived.set_version(scheme='P2PKH')
     xpub_derived = xpriv_derived.neutered()
@@ -318,7 +371,7 @@ def test_dice_rolls():
     assert xpriv_derived.export_format() == 'xprv9zYK9C7JKgDKQ3GCPSFMbZgJpESBKi5UnAnDSeYWe5PUmGG1kgojANiK3RZDBR7JESm8HnFGqrRNYXBvqoyoUMvMtU5j3BAAZec7tRUiWrq'
     assert xpub_derived.export_format() == 'xpub6DXfYheCA3mccXLfVTnMxhd3NGGfjAoL9PhpF2x8CQvTe4bAJE7yiB2ntgP4sZN33jgo4zradjW7Dq3n9K6Nb9d9jaBmAUcGWNqH6m6NmVs'
 
-    # BIP49
+    # BIP49, wrapped segwit
     xpriv_derived = xpriv.derivation_path("m/49'/0'/0'")
     xpriv_derived.set_version(scheme='P2SH(P2WPKH)')
     xpub_derived = xpriv_derived.neutered()
@@ -326,4 +379,10 @@ def test_dice_rolls():
     assert xpriv_derived.export_format() == 'yprvAJZ7VQBfL4Z9sbD9xmn7JBYgeuvHVQaei4UtYDBqVrQqyaTCWNksJue4TrR9hvCteDfumaGG1rAEmEGeX9yXYZyByviN2ScLPaMNcBbfzb2'
     assert xpub_derived.export_format() == 'ypub6XYTtuiZAS7T65Hd4oK7fKVRCwkmtsJW5HQVLbbT4BwprNnM3v57rhxYK8FrSTYEQ2i3SbG3JjH47W4W8HVyGvZ4BqKtwDRpvJ3ckVJ16jR'
 
+    # BIP84 native segwit
+    xpriv_derived = xpriv.derivation_path("m/84'/0'/0'")
+    xpriv_derived.set_version(scheme='P2WPKH')
+    xpub_derived = xpriv_derived.neutered()
 
+    assert xpriv_derived.export_format() == 'zprvAcRp2V6yKuNxV5aJJsEMjCPgfYYqSqDKjFjxHN3Sxb7sCF64nPUJEb2YgYdzvzBoBLsBgX36iiR6GYtNpv6BTM6qQEexJqfFmc1g6HBsdah'
+    assert xpub_derived.export_format() == 'zpub6qRARzdsAGwFhZemQtmN6LLRDaPKrHwB6UfZ5kT4Wver53RDKvnYnPM2XpGHDjdE2LDsB795FvugZRGDrufZv9jthRrvmfzVqot9GcctTjg'
