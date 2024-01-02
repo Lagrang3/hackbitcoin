@@ -1,26 +1,59 @@
+#!/usr/bin/env python
 from hackbitcoin.bip39 import Mnemonic
 from hackbitcoin.hash import sha256
 from hackbitcoin.extkey import ExtendedKey
 
-dice_roll = 10*'1' + 10*'2' + 10*'3' + 10*'4' + 10*'5'
-entropy = sha256(dice_roll.encode())
+import sys
 
-mnemonic = Mnemonic.generate(entropy[:16])
-assert mnemonic == 'limit palace swing matter antique come sea canvas cigar decide damage sea'
-print("mnemonic:", mnemonic)
+def main(dice_roll: str, nwords: int=12, passphrase: str=''):
+    '''
+    '''
+    entropy_bytes = 16 if nwords==12 else 32
+    entropy = sha256(dice_roll.encode())[:entropy_bytes]
+    mnemonic = Mnemonic.generate(entropy)
 
-xpriv = Mnemonic.master_key(mnemonic)
+    assert len(mnemonic.split()) == nwords
 
-xpriv_str = str(xpriv)
-assert xpriv_str=='xprv9s21ZrQH143K466vGp3fvz8f57ZVX52WQuGMXG48XpcYAx3Yu12aYZg59nZRuuAskKNKj3dUxhdokYtDPVdgmLg76gQiFJV62r9y8Rp3vs5'
-print("BIP32 root key:", xpriv_str)
+    print('Mnemonic phrase:', mnemonic)
 
-fingerprint = xpriv.fingerprint().hex()
-assert fingerprint == '084f6082'
-print("root key fingerpring:", fingerprint)
+    masterkey = Mnemonic.master_key(mnemonic, passphrase)
+    print("BIP32 root key:", masterkey.export_format())
+    print("fingerprint:", masterkey.fingerprint().hex())
+    print('\n')
 
-xpriv_derived = xpriv.derivation_path("m/49'/0'/0'")
-xpriv_derived.set_version(scheme='P2SH(P2WPKH)')
+    xpriv = masterkey.derivation_path("m/44'/0'/0'")
+    xpriv.set_version(scheme = 'P2PKH')
+    print("Legacy wallet (m/44'/0'/0')")
+    print("xpriv:", xpriv.export_format())
+    print("xpubk:", xpriv.neutered().export_format())
+    print('\n')
 
-xpub_derived = xpriv_derived.neutered()
-print(xpub_derived.export_format())
+
+    xpriv = masterkey.derivation_path("m/49'/0'/0'")
+    xpriv.set_version(scheme = 'P2SH(P2WPKH)')
+    print("Wrapped segwit (m/49'/0'/0')")
+    print("xpriv:", xpriv.export_format())
+    print("xpubk:", xpriv.neutered().export_format())
+    print('\n')
+
+    xpriv = masterkey.derivation_path("m/84'/0'/0'")
+    xpriv.set_version(scheme = 'P2WPKH')
+    print("Native segwit (m/84'/0'/0')")
+    print("xpriv:", xpriv.export_format())
+    print("xpubk:", xpriv.neutered().export_format())
+    print('\n')
+
+
+if __name__=="__main__":
+    assert len(sys.argv)>=3
+
+    dice_roll = sys.argv[1]
+    nwords = sys.argv[2]
+
+    assert nwords=='12' or nwords=='24'
+
+    passphrase = ''
+    if len(sys.argv)>3:
+        passphrase = sys.argv[3]
+
+    main(dice_roll, int(nwords), passphrase)
