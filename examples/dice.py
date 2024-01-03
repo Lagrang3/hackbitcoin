@@ -5,6 +5,7 @@ from hackbitcoin.extkey import ExtendedKey
 
 import sys
 import math
+import qrcode
 
 
 def only_these_chars(string, alphabet):
@@ -44,28 +45,32 @@ def main(dice_roll: str, nwords: int=12, passphrase: str=''):
     print("fingerprint:", masterkey.fingerprint().hex())
     print('\n')
 
+    def show_keys(xpriv):
+        xpubk = xpriv.neutered()
+        xpriv_fmt = xpriv.export_format()
+        xpubk_fmt = xpubk.export_format()
+        print("xpriv:", xpriv_fmt)
+        print("xpubk:", xpubk_fmt)
+        print('\n')
+        img = qrcode.make(xpubk_fmt).get_image()
+        img.show()
+        input('continue...')
+        # TODO: show first 3 addresses
+
+    print("Legacy wallet (m/44'/0'/0')")
     xpriv = masterkey.derivation_path("m/44'/0'/0'")
     xpriv.set_version(scheme = 'P2PKH')
-    print("Legacy wallet (m/44'/0'/0')")
-    print("xpriv:", xpriv.export_format())
-    print("xpubk:", xpriv.neutered().export_format())
-    print('\n')
+    show_keys(xpriv)
 
-
+    print("Wrapped segwit (m/49'/0'/0')")
     xpriv = masterkey.derivation_path("m/49'/0'/0'")
     xpriv.set_version(scheme = 'P2SH(P2WPKH)')
-    print("Wrapped segwit (m/49'/0'/0')")
-    print("xpriv:", xpriv.export_format())
-    print("xpubk:", xpriv.neutered().export_format())
-    print('\n')
+    show_keys(xpriv)
 
+    print("Native segwit (m/84'/0'/0')")
     xpriv = masterkey.derivation_path("m/84'/0'/0'")
     xpriv.set_version(scheme = 'P2WPKH')
-    print("Native segwit (m/84'/0'/0')")
-    print("xpriv:", xpriv.export_format())
-    print("xpubk:", xpriv.neutered().export_format())
-    print('\n')
-
+    show_keys(xpriv)
 
 def test():
     assert entropy_bits(12)==128

@@ -1,3 +1,5 @@
 pytest
 pycryptodome
 requests
+qrcode
+pillow
