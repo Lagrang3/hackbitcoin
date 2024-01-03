@@ -4,11 +4,34 @@ from hackbitcoin.hash import sha256
 from hackbitcoin.extkey import ExtendedKey
 
 import sys
+import math
+
+
+def only_these_chars(string, alphabet):
+    new_str = ''
+    for c in string:
+        if c in alphabet:
+            new_str += c
+    return new_str
+
+
+def min_events(bits):
+    single_dice = math.log2(6)
+    return math.ceil(bits/single_dice)
+
+
+def entropy_bits(nwords):
+    message_bits = nwords * 11
+    assert message_bits % 33 == 0
+    CS = message_bits // 33
+    ENT = message_bits - CS
+    return ENT
+
 
 def main(dice_roll: str, nwords: int=12, passphrase: str=''):
     '''
     '''
-    entropy_bytes = 16 if nwords==12 else 32
+    entropy_bytes = entropy_bits(nwords)//8
     entropy = sha256(dice_roll.encode())[:entropy_bytes]
     mnemonic = Mnemonic.generate(entropy)
 
@@ -44,16 +67,44 @@ def main(dice_roll: str, nwords: int=12, passphrase: str=''):
     print('\n')
 
 
+def test():
+    assert entropy_bits(12)==128
+    assert entropy_bits(24)==256
+    assert min_events(128)==50
+    assert min_events(256)==100
+
+
 if __name__=="__main__":
-    assert len(sys.argv)>=3
+    test()
 
-    dice_roll = sys.argv[1]
-    nwords = sys.argv[2]
+    dice_roll = input("Enter the dice sequence [1,6]: ")
+    s = only_these_chars(dice_roll, {'1','2','3','4','5','6'})
+    if s!=dice_roll:
+        dice_roll = s
+        print('WARNING: some characters have been removed from your input.')
+    print('Entropy will be computed with the following string:',dice_roll)
 
-    assert nwords=='12' or nwords=='24'
+    print()
 
-    passphrase = ''
-    if len(sys.argv)>3:
-        passphrase = sys.argv[3]
+    nwords = input("Length of mnemonic sentence (12 or 24): ")
+    if not( nwords=='12' or nwords=='24'):
+        raise ValueError('you must enter either 12 or 24')
+    nwords = int(nwords)
+    bits = entropy_bits(nwords)
+    need_events = min_events(bits)
+    nevents = len(dice_roll)
 
-    main(dice_roll, int(nwords), passphrase)
+    if nevents < need_events:
+        print("WARNING: for {} words ({} bits of entropy) we need at least {} "
+        "dice roll events, {} were given.".format(nwords, bits, need_events,
+        nevents))
+
+
+    print()
+
+    passphrase = input("Passphrase (can be empty): ")
+    print('Passphrase is:"{}"'.format(passphrase))
+
+    print()
+
+    main(dice_roll, nwords, passphrase)
