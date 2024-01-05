@@ -5,8 +5,16 @@ import Crypto.Hash.SHA256
 import Crypto.Hash.SHA512
 import Crypto.Hash.RIPEMD160
 import Crypto.Hash.HMAC
+import Crypto.Hash.SHAKE256
 from Crypto.Protocol.KDF import PBKDF2
 
+class shake256:
+    def __init__(self,data):
+        self.shake = Crypto.Hash.SHAKE256.new()
+        self.shake.update(data)
+
+    def read(self,n):
+        return self.shake.read(n)
 
 def hash160(message):
     """SHA256 followed by RIPEMD160"""

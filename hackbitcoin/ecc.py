@@ -72,9 +72,11 @@ class PrivKey:
     def __eq__(self,other):
         return self.secret == other.secret and self.compressed==other.compressed
 
-    def __init__(self,secret, compressed=True):
+    def __init__(self,secret: int, compressed: bool=True):
         self.secret = secret
         self.compressed = compressed
+        if self.secret==0 or self.secret>=secp256k1_Point.N:
+            raise ValueError('PrivKey is invalid')
 
     def wif(self, network='mainnet'):
         """Wallet Import Format (WIF) human readable serialization of the

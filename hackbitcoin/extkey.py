@@ -20,7 +20,7 @@ class ExtendedKey:
         if not (isinstance(key, PrivKey) or isinstance(key, PubKey)):
             raise ValueError(\
                 'Key is neither a PrivKey nor a PubKey, type: {}'.format(\
-                    type(self.key)))
+                    type(key)))
 
         self.key = key
         self.chain_code = chain_code
