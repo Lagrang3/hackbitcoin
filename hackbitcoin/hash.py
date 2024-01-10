@@ -6,7 +6,7 @@ import Crypto.Hash.SHA512
 import Crypto.Hash.RIPEMD160
 import Crypto.Hash.HMAC
 import Crypto.Hash.SHAKE256
-from Crypto.Protocol.KDF import PBKDF2
+from Crypto.Protocol.KDF import PBKDF2, HKDF
 
 class shake256:
     def __init__(self,data):
@@ -54,3 +54,7 @@ def hmac_sha512(secret, message):
 def pbkdf2_hmac_sha512(password, salt, iterations):
     return PBKDF2(password, salt, 64, count = iterations, \
         hmac_hash_module=Crypto.Hash.SHA512)
+
+
+def hkdf_sha256(key, salt, context):
+    return HKDF(key, 32, salt, Crypto.Hash.SHA256, context=context)

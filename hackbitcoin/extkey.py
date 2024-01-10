@@ -185,7 +185,7 @@ class ExtendedKey:
 
 
     def derivation_path(self, path: str):
-        assert not self.is_public()
+        # assert not self.is_public()
         der = path.split('/')
         assert der[0]=='m'
         der = der[1:]
@@ -196,6 +196,7 @@ class ExtendedKey:
             if x[-1]=="'":
                 hardened=True
                 i = int(x[:-1])
+                assert not self.is_public()
             else:
                 hardened = False
                 i = int(x)
