@@ -66,8 +66,8 @@ def test_address():
     p = PubKey.from_PrivKey(PrivKey(0x12345deadbeef))
     assert Address.p2pkh(p,network='mainnet') == '1F1Pn2y6pDb68E5nYJJeba4TLg2U7B6KF1'
 
-    # TODO: make sure we are generating this type of address correctly
-    assert Address.p2sh(p,network='mainnet') == '3Nv23Lbg32NsFZA7FL9LzjZZSK2XCzD8ai'
+    assert Address.address(p, scheme='P2SH(P2PKH)',network='mainnet') == '38A88P5BTTo3AfWtCgFnrMfcqgPbE5NuE8'
+    assert Address.address(p, scheme='P2SH(P2WPKH)',network='mainnet') == '37XT8e1HMLe9YQ2ufRjvrG6BJVPrENo9Ux'
 
     p = PubKey.parse( \
             bytes.fromhex( \

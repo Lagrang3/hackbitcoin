@@ -12,14 +12,9 @@ class Address:
         return base58.encode_checksum(prefix+h160)
 
     @staticmethod
-    def p2sh(pubkey,network='mainnet'):
-        pk_hash = hash160(pubkey.serialize())
-        script = Script.from_opcodes([ \
-                Script.OP_DUP, Script.OP_HASH160, pk_hash,
-                Script.OP_EQUALVERIFY, Script.OP_CHECKSIG])
-        h160 = hash160(script.serialize())
+    def p2sh(script_hash, network='mainnet'):
         prefix = Network.address_prefix('P2SH', network)
-        return base58.encode_checksum(prefix+h160)
+        return base58.encode_checksum(prefix+script_hash)
 
     @staticmethod
     def p2wpkh(pubkey,network='mainnet'):
@@ -40,3 +35,23 @@ class Address:
         # TODO
         pass
 
+    @staticmethod
+    def address(pubkey, scheme, network='mainnet'):
+        if scheme=='P2PKH':
+            return Address.p2pkh(pubkey, network)
+        if scheme=='P2WPKH':
+            return Address.p2wpkh(pubkey, network)
+        if scheme == 'P2SH(P2WPKH)':
+            pk_hash = hash160(pubkey.serialize())
+            script = Script.from_opcodes([ \
+                    Script.OP_0, pk_hash])
+            script_hash = hash160(script.serialize()[1:])
+            return Address.p2sh(script_hash, network)
+        if scheme == 'P2SH(P2PKH)':
+            pk_hash = hash160(pubkey.serialize())
+            script = Script.from_opcodes([ \
+                    Script.OP_DUP, Script.OP_HASH160, pk_hash,
+                    Script.OP_EQUALVERIFY, Script.OP_CHECKSIG])
+            script_hash = hash160(script.serialize()[1:])
+            return Address.p2sh(script_hash, network)
+        raise RuntimeError("not a valid scheme")
