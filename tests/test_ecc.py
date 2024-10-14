@@ -145,3 +145,21 @@ def test_ecdsa():
     # also -s is valid
     sig.s = N -sig.s
     assert ecdsa.verify_signature(pub,m,sig)
+
+    sighash = '27e0c5994dec7824e56dec6b2fcb342eb7cdb0d0957c2fce9882f715e85d81a6'
+    signature = '3045022100ed81ff192e75a3fd2304004dcadb746fa5e24c5031ccfcf21320b0277457c98f02207a986d955c6e0cb35d446a89d3f56100f4d7f67801c31967743a9c8e10615bed'
+    pubk_hex = '0349fc4e631e3624a545de3f89f5d8684c7b8138bd94bdd531d2e213bf016b278a'
+
+    pk = PubKey.parse(bytes.fromhex(pubk_hex))
+    m = int.from_bytes(bytes.fromhex(sighash), 'big')
+    sig = Signature.parse(bytes.fromhex(signature))
+    assert ecdsa.verify_signature(pk, m, sig)
+
+    sighash = 'c37af31116d1b27caf68aae9e3ac82f1477929014d5b917657d0eb49478cb670'
+    signature = '304402203609e17b84f6a7d30c80bfa610b5b4542f32a8a0d5447a12fb1366d7f01cc44a0220573a954c4518331561406f90300e8f3358f51928d43c212a8caed02de67eebee'
+    pubk_hex = '025476c2e83188368da1ff3e292e7acafcdb3566bb0ad253f62fc70f07aeee6357'
+
+    pk = PubKey.parse(bytes.fromhex(pubk_hex))
+    m = int.from_bytes(bytes.fromhex(sighash), 'big')
+    sig = Signature.parse(bytes.fromhex(signature))
+    assert ecdsa.verify_signature(pk, m, sig)
